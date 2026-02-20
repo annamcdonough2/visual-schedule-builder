@@ -1,7 +1,26 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import * as LucideIcons from 'lucide-react';
-import { Check, PartyPopper, ArrowLeft } from 'lucide-react';
+import { Check, PartyPopper, ArrowLeft, GripVertical, Printer, Download, Pencil } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { generatePDF } from '../utils/pdf';
+import PrintPreview from './PrintPreview';
 
 // Pastel color rotation for step items
 const stepColors = [
@@ -54,45 +73,208 @@ function fireFinaleConfetti() {
   frame();
 }
 
-export default function InteractiveMode({ steps, title, onExit }) {
+function SortableStep({ step, index, isCompleted, onToggle }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: step.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const Icon = LucideIcons[step.icon] || LucideIcons.CircleDot;
+  const colors = stepColors[index % stepColors.length];
+
+  const handleToggle = (e) => {
+    // Don't toggle if clicking on drag handle or if currently dragging
+    if (e.target.closest('.drag-handle')) return;
+    if (isDragging) return;
+    onToggle(step.id, e);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={handleToggle}
+      onTouchEnd={(e) => {
+        // Handle touch separately for better iPad support
+        if (e.target.closest('.drag-handle')) return;
+        if (isDragging) return;
+        // Prevent double-firing with onClick
+        e.preventDefault();
+        onToggle(step.id, e);
+      }}
+      role="button"
+      tabIndex={0}
+      className={`
+        flex items-center gap-4 rounded-2xl p-4 md:p-5
+        border-2 min-h-[88px] md:min-h-[96px]
+        touch-manipulation shadow-sm text-left
+        transition-all duration-300 ease-out cursor-pointer select-none
+        ${isDragging ? 'z-50 shadow-xl scale-[1.02]' : ''}
+        ${isCompleted
+          ? `${colors.completedBg} border-white/60 opacity-75 scale-[0.98]`
+          : `${colors.bg} border-white/60 hover:scale-[1.02] hover:shadow-md active:scale-[0.98]`
+        }
+      `}
+    >
+      {/* Drag handle */}
+      <button
+        className="drag-handle p-2 text-gray-400 hover:text-gray-600 touch-manipulation rounded-xl hover:bg-white/50"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-6 h-6" />
+      </button>
+
+      {/* Icon */}
+      <div className={`w-[72px] h-[72px] md:w-20 md:h-20 ${colors.icon} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm relative`}>
+        <Icon className={`w-9 h-9 md:w-10 md:h-10 ${colors.iconColor} ${isCompleted ? 'opacity-50' : ''}`} />
+        {isCompleted && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-2xl">
+            <Check className="w-10 h-10 text-emerald-500" strokeWidth={3} />
+          </div>
+        )}
+      </div>
+
+      {/* Label */}
+      <span className={`flex-grow font-bold text-xl md:text-2xl ${isCompleted ? 'text-gray-600 line-through' : 'text-gray-700'}`}>
+        {step.label}
+      </span>
+
+      {/* Checkbox */}
+      <div className={`w-10 h-10 border-3 rounded-xl flex-shrink-0 flex items-center justify-center transition-colors ${
+        isCompleted
+          ? 'bg-emerald-400 border-emerald-400'
+          : 'bg-white border-gray-300'
+      }`}>
+        {isCompleted && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
+      </div>
+    </div>
+  );
+}
+
+export default function InteractiveMode({ steps, setSteps, title, onExit }) {
   const [completedSteps, setCompletedSteps] = useState(new Set());
-  const allDone = completedSteps.size === steps.length;
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const printRef = useRef(null);
+  const allDone = completedSteps.size === steps.length && steps.length > 0;
 
-  const handleStepClick = (stepId, event) => {
-    if (completedSteps.has(stepId)) return;
+  const handleDownloadPDF = async () => {
+    if (!printRef.current || isGeneratingPDF) return;
+    setIsGeneratingPDF(true);
+    try {
+      await generatePDF(printRef.current, title || 'My Routine');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
-    // Get click position for confetti origin
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = (rect.left + rect.width / 2) / window.innerWidth;
-    const y = (rect.top + rect.height / 2) / window.innerHeight;
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-    // Add to completed
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setSteps((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleToggle = (stepId, event) => {
     const newCompleted = new Set(completedSteps);
-    newCompleted.add(stepId);
-    setCompletedSteps(newCompleted);
 
-    // Fire confetti
-    fireConfetti(x, y);
+    if (completedSteps.has(stepId)) {
+      // Uncheck
+      newCompleted.delete(stepId);
+      setCompletedSteps(newCompleted);
+    } else {
+      // Check - fire confetti
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = (rect.left + rect.width / 2) / window.innerWidth;
+      const y = (rect.top + rect.height / 2) / window.innerHeight;
 
-    // Check if all done
-    if (newCompleted.size === steps.length) {
-      setTimeout(() => {
-        fireFinaleConfetti();
-      }, 300);
+      newCompleted.add(stepId);
+      setCompletedSteps(newCompleted);
+
+      fireConfetti(x, y);
+
+      // Check if all done
+      if (newCompleted.size === steps.length) {
+        setTimeout(() => {
+          fireFinaleConfetti();
+        }, 300);
+      }
     }
   };
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen pb-8">
       {/* Header */}
-      <div className="bg-gradient-to-r from-pink-300 via-purple-300 to-blue-300 text-white py-6 px-4 shadow-lg">
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-2xl md:text-3xl font-bold mb-1">
-            {title || 'My Routine'}
-          </h1>
-          <p className="text-white/90 text-lg">
-            {allDone ? "Amazing job! All done!" : "Tap each step when you're done!"}
-          </p>
+      <div className="sticky top-0 z-40 bg-gradient-to-r from-pink-300 via-purple-300 to-blue-300 text-white py-4 px-4 shadow-lg">
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
+          {/* Edit button */}
+          <button
+            onClick={onExit}
+            className="no-print p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+            aria-label="Back to Edit"
+          >
+            <Pencil className="w-5 h-5" />
+          </button>
+
+          {/* Title and subtitle */}
+          <div className="flex-grow text-center">
+            <h1 className="text-xl md:text-2xl font-bold">
+              {title || 'My Routine'}
+            </h1>
+            <p className="text-white/90 text-sm">
+              {allDone ? "Amazing job! All done!" : "Tap each step when you're done!"}
+            </p>
+          </div>
+
+          {/* Print and Download icons */}
+          <button
+            onClick={() => window.print()}
+            className="no-print p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
+            aria-label="Print"
+          >
+            <Printer className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isGeneratingPDF}
+            className="no-print p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-colors disabled:opacity-50"
+            aria-label="Download PDF"
+          >
+            <Download className={`w-5 h-5 ${isGeneratingPDF ? 'animate-pulse' : ''}`} />
+          </button>
         </div>
       </div>
 
@@ -106,7 +288,7 @@ export default function InteractiveMode({ steps, title, onExit }) {
             <div className="flex-grow h-4 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-pink-400 to-purple-400 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${(completedSteps.size / steps.length) * 100}%` }}
+                style={{ width: `${steps.length > 0 ? (completedSteps.size / steps.length) * 100 : 0}%` }}
               />
             </div>
             {allDone && <PartyPopper className="w-6 h-6 text-amber-500" />}
@@ -116,77 +298,50 @@ export default function InteractiveMode({ steps, title, onExit }) {
 
       {/* Steps */}
       <div className="max-w-3xl mx-auto px-4 py-2">
-        <div className="space-y-4">
-          {steps.map((step, index) => {
-            const Icon = LucideIcons[step.icon] || LucideIcons.CircleDot;
-            const colors = stepColors[index % stepColors.length];
-            const isCompleted = completedSteps.has(step.id);
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={steps} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4">
+              {steps.map((step, index) => (
+                <SortableStep
+                  key={step.id}
+                  step={step}
+                  index={index}
+                  isCompleted={completedSteps.has(step.id)}
+                  onToggle={handleToggle}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
 
-            return (
-              <button
-                key={step.id}
-                onClick={(e) => handleStepClick(step.id, e)}
-                disabled={isCompleted}
-                className={`
-                  w-full flex items-center gap-4 rounded-2xl p-4 md:p-5
-                  border-2 min-h-[88px] md:min-h-[96px]
-                  touch-manipulation shadow-sm text-left
-                  transition-all duration-300 ease-out
-                  ${isCompleted
-                    ? `${colors.completedBg} border-white/60 opacity-75 scale-[0.98]`
-                    : `${colors.bg} border-white/60 hover:scale-[1.02] hover:shadow-md active:scale-[0.98] cursor-pointer`
-                  }
-                `}
-              >
-                {/* Icon */}
-                <div className={`w-[72px] h-[72px] md:w-20 md:h-20 ${colors.icon} rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm relative`}>
-                  <Icon className={`w-9 h-9 md:w-10 md:h-10 ${colors.iconColor} ${isCompleted ? 'opacity-50' : ''}`} />
-                  {isCompleted && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-2xl">
-                      <Check className="w-10 h-10 text-emerald-500" strokeWidth={3} />
-                    </div>
-                  )}
-                </div>
-
-                {/* Label */}
-                <span className={`flex-grow font-bold text-xl md:text-2xl ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
-                  {step.label}
-                </span>
-
-                {/* Checkbox */}
-                <div className={`w-10 h-10 border-3 rounded-xl flex-shrink-0 flex items-center justify-center transition-colors ${
-                  isCompleted
-                    ? 'bg-emerald-400 border-emerald-400'
-                    : 'bg-white border-gray-300'
-                }`}>
-                  {isCompleted && <Check className="w-6 h-6 text-white" strokeWidth={3} />}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* All done message */}
+        {/* All done message - centered overlay */}
         {allDone && (
-          <div className="mt-8 text-center animate-bounce">
-            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-100 to-yellow-100 px-8 py-4 rounded-2xl shadow-lg">
-              <PartyPopper className="w-10 h-10 text-amber-500" />
-              <span className="text-2xl font-bold text-amber-700">Great job!</span>
-              <PartyPopper className="w-10 h-10 text-amber-500" />
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+            <div className="animate-bounce pointer-events-auto">
+              <div className="flex flex-col items-center gap-4 bg-gradient-to-r from-amber-100 to-yellow-100 px-12 py-8 rounded-3xl shadow-2xl border-4 border-amber-200">
+                <div className="flex items-center gap-4">
+                  <PartyPopper className="w-16 h-16 text-amber-500" />
+                  <span className="text-4xl md:text-5xl font-bold text-amber-700">Great job!</span>
+                  <PartyPopper className="w-16 h-16 text-amber-500" />
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Exit button */}
-      <div className="fixed bottom-6 left-6">
-        <button
-          onClick={onExit}
-          className="cute-button flex items-center gap-2 px-5 py-3 bg-white/90 backdrop-blur-sm text-gray-600 rounded-2xl shadow-lg hover:bg-white transition-all font-bold text-base border-2 border-white"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back to Edit
-        </button>
+      {/* Hidden print preview for PDF generation */}
+      <div className="fixed -left-[9999px]" aria-hidden="true">
+        <PrintPreview
+          ref={printRef}
+          title={title}
+          steps={steps}
+          showCheckbox={true}
+        />
       </div>
     </div>
   );

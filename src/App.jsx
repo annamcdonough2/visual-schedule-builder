@@ -40,6 +40,7 @@ export default function App() {
     return (
       <InteractiveMode
         steps={steps}
+        setSteps={setSteps}
         title={title}
         onExit={() => setIsInteractive(false)}
       />

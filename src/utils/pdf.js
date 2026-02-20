@@ -58,5 +58,14 @@ export async function generatePDF(element, filename) {
     .replace(/\s+/g, '-')
     .toLowerCase();
 
-  pdf.save(`${safeFilename || 'routine'}.pdf`);
+  // Use blob and explicit download link for better filename control
+  const blob = pdf.output('blob');
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${safeFilename || 'routine'}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
