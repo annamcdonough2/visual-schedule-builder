@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/* Custom pastel color palette */
+:root {
+  --pastel-pink: #FFB5C5;
+  --pastel-blue: #B5D8FF;
+  --pastel-yellow: #FFF3B5;
+  --pastel-green: #B5FFD9;
+  --pastel-purple: #E0B5FF;
+  --pastel-peach: #FFDAB5;
+  --pastel-mint: #B5FFF0;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  .print-container {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 20px;
+    box-shadow: none !important;
+  }
+
+  .print-step {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  svg {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+/* Base styles - friendly & approachable */
+body {
+  font-family: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #FFF5F8 0%, #F0F8FF 50%, #F5FFF0 100%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Touch-friendly defaults */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Drag handle cursor */
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Dragging state - bouncy effect */
+.dragging {
+  opacity: 0.95;
+  transform: scale(1.05) rotate(1deg);
+  box-shadow: 0 20px 40px -10px rgba(255, 150, 180, 0.3), 0 10px 20px -10px rgba(150, 180, 255, 0.3);
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal slide up animation for mobile - bouncy */
+.modal-content {
+  animation: slideUpBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUpBounce {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (min-width: 768px) {
+  .modal-content {
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes popIn {
+    from {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+}
+
+/* Fun button hover effect */
+.cute-button {
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cute-button:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.cute-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Wiggle animation for icons */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+.wiggle-hover:hover {
+  animation: wiggle 0.3s ease-in-out;
+}
