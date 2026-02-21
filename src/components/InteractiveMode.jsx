@@ -147,11 +147,11 @@ function SortableStep({ step, index, isCompleted, onToggle }) {
     >
       {/* Drag handle */}
       <button
-        className="drag-handle p-2 text-gray-400 hover:text-gray-600 touch-manipulation rounded-xl hover:bg-white/50"
+        className="drag-handle p-3 text-gray-400 hover:text-gray-600 touch-manipulation rounded-xl hover:bg-white/50 min-w-[44px] min-h-[44px] flex items-center justify-center"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="w-6 h-6" />
+        <GripVertical className="w-7 h-7" />
       </button>
 
       {/* Icon */}
