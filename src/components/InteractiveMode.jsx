@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -83,6 +83,10 @@ function SortableStep({ step, index, isCompleted, onToggle }) {
     isDragging,
   } = useSortable({ id: step.id });
 
+  // Track touch start to detect taps vs drags
+  const touchStart = useRef({ x: 0, y: 0, time: 0 });
+  const wasDragging = useRef(false);
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -91,26 +95,42 @@ function SortableStep({ step, index, isCompleted, onToggle }) {
   const Icon = LucideIcons[step.icon] || LucideIcons.CircleDot;
   const colors = stepColors[index % stepColors.length];
 
-  const handleToggle = (e) => {
-    // Don't toggle if clicking on drag handle or if currently dragging
+  const handlePointerDown = (e) => {
+    touchStart.current = { x: e.clientX, y: e.clientY, time: Date.now() };
+    wasDragging.current = false;
+  };
+
+  const handlePointerUp = (e) => {
+    // Don't toggle if clicking on drag handle
     if (e.target.closest('.drag-handle')) return;
-    if (isDragging) return;
+
+    // Check if this was a tap (not a drag)
+    const dx = Math.abs(e.clientX - touchStart.current.x);
+    const dy = Math.abs(e.clientY - touchStart.current.y);
+    const dt = Date.now() - touchStart.current.time;
+
+    // If moved more than 10px or was dragging, don't toggle
+    if (dx > 10 || dy > 10 || isDragging || wasDragging.current) return;
+
+    // If held for more than 300ms without moving much, it might be a drag attempt
+    if (dt > 300) return;
+
     onToggle(step.id, e);
   };
+
+  // Track if dragging started
+  useEffect(() => {
+    if (isDragging) {
+      wasDragging.current = true;
+    }
+  }, [isDragging]);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      onClick={handleToggle}
-      onTouchEnd={(e) => {
-        // Handle touch separately for better iPad support
-        if (e.target.closest('.drag-handle')) return;
-        if (isDragging) return;
-        // Prevent double-firing with onClick
-        e.preventDefault();
-        onToggle(step.id, e);
-      }}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       role="button"
       tabIndex={0}
       className={`
