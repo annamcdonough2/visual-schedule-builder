@@ -4,6 +4,7 @@ import Header from './components/Header';
 import TemplateSelector from './components/TemplateSelector';
 import RoutineBuilder from './components/RoutineBuilder';
 import InteractiveMode from './components/InteractiveMode';
+import InstallPrompt from './components/InstallPrompt';
 import { templates } from './data/templates';
 
 export default function App() {
@@ -82,6 +83,8 @@ export default function App() {
           </>
         )}
       </main>
+
+      <InstallPrompt />
     </div>
   );
 }
