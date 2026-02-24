@@ -1,4 +1,4 @@
-import { Printer, Download, CheckSquare, Square, Plus, Play } from 'lucide-react';
+import { Printer, Download, CheckSquare, Square, Plus, Play, Save } from 'lucide-react';
 
 export default function Controls({
   title,
@@ -9,6 +9,8 @@ export default function Controls({
   onDownloadPDF,
   onAddStep,
   onStartInteractive,
+  onSaveRoutine,
+  saveStatus,
   isGeneratingPDF,
   hasSteps,
 }) {
@@ -71,6 +73,15 @@ export default function Controls({
           </button>
 
           <button
+            onClick={onSaveRoutine}
+            disabled={!hasSteps || !title.trim()}
+            className="cute-button flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-200 text-amber-700 hover:bg-amber-300 transition-colors touch-manipulation font-bold text-base shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="w-7 h-7" />
+            <span>Save</span>
+          </button>
+
+          <button
             onClick={onPrint}
             className="cute-button flex items-center gap-2 px-5 py-3 rounded-2xl bg-blue-300 text-blue-700 hover:bg-blue-400 transition-colors touch-manipulation font-bold text-base shadow-sm"
           >
@@ -88,6 +99,18 @@ export default function Controls({
           </button>
         </div>
       </div>
+
+      {/* Save status feedback */}
+      {saveStatus === 'saved' && (
+        <div className="mt-4 text-center text-amber-600 font-medium">
+          Saved on this device!
+        </div>
+      )}
+      {saveStatus === 'limit' && (
+        <div className="mt-4 text-center text-amber-600 font-medium">
+          You can save up to 2 routines. Delete one to save a new one!
+        </div>
+      )}
     </div>
   );
 }

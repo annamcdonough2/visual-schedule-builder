@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import Header from './components/Header';
 import TemplateSelector from './components/TemplateSelector';
@@ -6,12 +6,19 @@ import RoutineBuilder from './components/RoutineBuilder';
 import InteractiveMode from './components/InteractiveMode';
 import InstallPrompt from './components/InstallPrompt';
 import { templates } from './data/templates';
+import { getSavedRoutines, saveRoutine, deleteRoutine } from './utils/storage';
 
 export default function App() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [steps, setSteps] = useState([]);
   const [title, setTitle] = useState('');
   const [isInteractive, setIsInteractive] = useState(false);
+  const [savedRoutines, setSavedRoutines] = useState([]);
+  const [saveStatus, setSaveStatus] = useState(null);
+
+  useEffect(() => {
+    setSavedRoutines(getSavedRoutines());
+  }, []);
 
   const handleSelectTemplate = (templateId) => {
     const template = templates[templateId];
@@ -34,6 +41,33 @@ export default function App() {
     setSteps([]);
     setTitle('');
     setIsInteractive(false);
+    setSaveStatus(null);
+    setSavedRoutines(getSavedRoutines());
+  };
+
+  const handleSaveRoutine = () => {
+    if (!title.trim() || steps.length === 0) return;
+
+    const result = saveRoutine({ title, steps });
+    if (result.success) {
+      setSaveStatus('saved');
+      setSavedRoutines(getSavedRoutines());
+      setTimeout(() => setSaveStatus(null), 3000);
+    } else if (result.reason === 'limit') {
+      setSaveStatus('limit');
+    }
+  };
+
+  const handleLoadSavedRoutine = (routine) => {
+    setTitle(routine.title);
+    setSteps(routine.steps);
+    setSelectedTemplate('saved');
+    setIsInteractive(true);
+  };
+
+  const handleDeleteRoutine = (id) => {
+    deleteRoutine(id);
+    setSavedRoutines(getSavedRoutines());
   };
 
   // Interactive mode - full screen experience
@@ -58,6 +92,9 @@ export default function App() {
             <TemplateSelector
               onSelectTemplate={handleSelectTemplate}
               selectedTemplate={selectedTemplate}
+              savedRoutines={savedRoutines}
+              onLoadSavedRoutine={handleLoadSavedRoutine}
+              onDeleteRoutine={handleDeleteRoutine}
             />
           </div>
         ) : (
@@ -68,6 +105,8 @@ export default function App() {
               title={title}
               setTitle={setTitle}
               onStartInteractive={() => setIsInteractive(true)}
+              onSaveRoutine={handleSaveRoutine}
+              saveStatus={saveStatus}
             />
 
             {/* Reset button */}

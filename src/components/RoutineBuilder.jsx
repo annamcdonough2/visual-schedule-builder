@@ -12,6 +12,8 @@ export default function RoutineBuilder({
   title,
   setTitle,
   onStartInteractive,
+  onSaveRoutine,
+  saveStatus,
 }) {
   const [showCheckbox, setShowCheckbox] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -57,6 +59,8 @@ export default function RoutineBuilder({
         onDownloadPDF={handleDownloadPDF}
         onAddStep={() => setShowAddModal(true)}
         onStartInteractive={onStartInteractive}
+        onSaveRoutine={onSaveRoutine}
+        saveStatus={saveStatus}
         isGeneratingPDF={isGeneratingPDF}
         hasSteps={steps.length > 0}
       />
