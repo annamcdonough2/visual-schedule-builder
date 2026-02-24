@@ -86,25 +86,27 @@ export default function TemplateSelector({
             <Bookmark className="w-6 h-6 text-pink-500" fill="currentColor" />
             Your Saved Routines
           </h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             {savedRoutines.map((routine) => (
               <div
                 key={routine.id}
-                className="relative cute-button flex flex-col items-center justify-center p-5 md:p-6 rounded-3xl min-h-[140px] md:min-h-[160px] transition-all duration-200 touch-manipulation border-3 bg-pink-100 border-transparent hover:bg-pink-200 hover:shadow-md cursor-pointer"
+                className="relative cute-button flex flex-row items-center gap-4 p-5 md:p-6 rounded-3xl min-h-[100px] transition-all duration-200 touch-manipulation border-3 bg-pink-100 border-transparent hover:bg-pink-200 hover:shadow-md cursor-pointer"
                 onClick={() => onLoadSavedRoutine(routine)}
               >
-                <div className="mb-3 p-3 rounded-full bg-white/40">
-                  <Play className="w-10 h-10 md:w-12 md:h-12 text-pink-500" fill="currentColor" />
+                <div className="p-3 rounded-full bg-white/40 flex-shrink-0">
+                  <Play className="w-8 h-8 md:w-10 md:h-10 text-pink-500" fill="currentColor" />
                 </div>
-                <span className="font-bold text-base md:text-lg text-gray-700 text-center flex items-center gap-1.5">
-                  <span className="p-1 rounded-full bg-white/60 flex-shrink-0">
-                    <Heart className="w-4 h-4 text-pink-500" fill="currentColor" />
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold text-base md:text-lg text-gray-700 flex items-center gap-1.5">
+                    <span className="p-1 rounded-full bg-white/60 flex-shrink-0">
+                      <Heart className="w-4 h-4 text-pink-500" fill="currentColor" />
+                    </span>
+                    {routine.title}
                   </span>
-                  {routine.title}
-                </span>
-                <span className="text-sm text-gray-500 mt-1">
-                  {routine.steps.length} steps
-                </span>
+                  <span className="text-sm text-gray-500 mt-1 block">
+                    {routine.steps.length} steps
+                  </span>
+                </div>
 
                 {/* Delete button */}
                 <button
@@ -112,7 +114,7 @@ export default function TemplateSelector({
                     e.stopPropagation();
                     onDeleteRoutine(routine.id);
                   }}
-                  className="absolute bottom-3 right-3 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-red-100 hover:bg-red-200 text-red-500 hover:text-red-600 transition-colors touch-manipulation"
+                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-red-100 hover:bg-red-200 text-red-500 hover:text-red-600 transition-colors touch-manipulation flex-shrink-0"
                   aria-label={`Delete ${routine.title}`}
                 >
                   <Trash2 className="w-5 h-5" />
