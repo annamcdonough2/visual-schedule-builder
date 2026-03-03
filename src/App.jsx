@@ -7,6 +7,7 @@ import InteractiveMode from './components/InteractiveMode';
 import InstallPrompt from './components/InstallPrompt';
 import { templates } from './data/templates';
 import { getSavedRoutines, saveRoutine, deleteRoutine } from './utils/storage';
+import { trackEvent } from './utils/analytics';
 
 export default function App() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -34,6 +35,7 @@ export default function App() {
     }));
 
     setSteps(stepsWithUniqueIds);
+    trackEvent('Template Selected', { template: templateId });
   };
 
   const handleReset = () => {
@@ -53,6 +55,7 @@ export default function App() {
       setSaveStatus('saved');
       setSavedRoutines(getSavedRoutines());
       setTimeout(() => setSaveStatus(null), 3000);
+      trackEvent('Routine Saved', { steps: steps.length });
     } else if (result.reason === 'limit') {
       setSaveStatus('limit');
     }
